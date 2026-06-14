@@ -641,7 +641,7 @@ if not st.session_state.logged_in:
         if st.button("🎬  Try with Sample Data (No Login)"):
             st.session_state.logged_in = True
             st.session_state.user_email = "demo@marketwin.ai"
-            st.session_state.role = "Administrator"
+            st.session_state.role = "Sales"
             st.session_state.demo_mode = True
             st.rerun()
 
