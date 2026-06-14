@@ -1,0 +1,10 @@
+streamlit
+pandas
+requests
+mysql-connector-python
+fastapi
+uvicorn
+groq
+pydantic
+fpdf2
+python-dotenv
