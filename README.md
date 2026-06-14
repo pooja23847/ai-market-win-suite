@@ -18,6 +18,7 @@ AI Market-Win Suite is a Streamlit-based B2B competitive intelligence and sales 
 - Streamlit
 - MySQL
 - Pandas
+- Hindsight Agent Memory Framework
 - Groq API
 - LLaMA 3.3 70B
 
