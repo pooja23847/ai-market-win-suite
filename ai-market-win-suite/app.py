@@ -8,6 +8,7 @@ from datetime import datetime
 import io
 import base64
 from dotenv import load_dotenv
+from memory_manager import MarketMemoryManager
 
 load_dotenv()
 
@@ -22,6 +23,11 @@ DB_CONFIG = {
 }
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+
+@st.cache_resource
+def get_memory_manager():
+    return MarketMemoryManager()
 
 # ==========================================
 # DEMO DATA (fallback when MySQL is offline)
@@ -104,6 +110,20 @@ def insert_intel(competitor, category, intel, timestamp):
         st.session_state.demo_intel.append({"competitor": competitor, "category": category, "intel": intel, "timestamp": timestamp})
         return
     run_query("INSERT INTO competitor_intel (competitor, category, intel, timestamp) VALUES (%s, %s, %s, %s)", (competitor, category, intel, timestamp), is_select=False)
+
+def retain_hindsight_memory(competitor, category, intel, timestamp):
+    try:
+        update_text = f"{category}: {intel}"
+        return get_memory_manager().store_competitor_intel(competitor, update_text, timestamp)
+    except Exception:
+        return None
+
+def recall_hindsight_context(query):
+    try:
+        memories = get_memory_manager().recall_relevant_market_data(query)
+        return "\n".join([f"- {m.text}" for m in memories]) if memories else "No relevant Hindsight memories recalled."
+    except Exception:
+        return "No relevant Hindsight memories recalled."
 
 def authenticate(email, password):
     if st.session_state.get("demo_mode") or not st.session_state.get("db_online"):
@@ -882,6 +902,7 @@ with tab1:
             if comp_name and raw_intel:
                 now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 insert_intel(comp_name, intel_cat, raw_intel, now_time)
+                retain_hindsight_memory(comp_name, intel_cat, raw_intel, now_time)
                 log_system_activity(st.session_state.user_email, f"Added intel for '{comp_name}'")
                 show_toast(f"Intel on {comp_name} saved successfully!", "success")
                 st.rerun()
@@ -1047,10 +1068,14 @@ with tab3:
                 st.stop()
             log_system_activity(st.session_state.user_email, "Generated B2B Proposal Document")
             all_context = "\n".join([f"- {row['competitor']} ({row['category']}): {row['intel']}" for _, row in df_intel_global.iterrows()])
+            hindsight_context = recall_hindsight_context(rfp_text_block)
             master_prompt = f"""You are a senior enterprise solutions consultant writing a {proposal_tone} proposal.
 
 Competitive landscape context:
 {all_context}
+
+Recalled Hindsight agent memory:
+{hindsight_context}
 
 Client: {client_name or 'Prospect'}
 RFP Requirements:

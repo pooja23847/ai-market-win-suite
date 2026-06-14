@@ -21,15 +21,27 @@ AI Market-Win Suite is a Streamlit-based B2B competitive intelligence and sales 
 - Groq API
 - LLaMA 3.3 70B
 
+## Project Structure
+
+```txt
+ai-market-win-suite/
+  app.py
+  llm_manager.py
+  memory_manager.py
+  main.py
+  requirements.txt
+  README.md
+```
+
 ## Setup
 
 Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -r ai-market-win-suite/requirements.txt
 ```
 
-Create a `.env` file in this folder:
+Create a `.env` file inside `ai-market-win-suite/`:
 
 ```env
 GROQ_API_KEY=your_groq_api_key_here
@@ -45,7 +57,7 @@ HINDSIGHT_API_KEY=your_hindsight_api_key_here
 Run the app:
 
 ```bash
-streamlit run app.py
+streamlit run ai-market-win-suite/app.py
 ```
 
 ## Security Note
