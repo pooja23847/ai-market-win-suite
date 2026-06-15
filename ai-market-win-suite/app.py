@@ -4,11 +4,10 @@ import requests
 import json
 import mysql.connector
 import os
+from dotenv import load_dotenv
 from datetime import datetime
 import io
 import base64
-from dotenv import load_dotenv
-from memory_manager import MarketMemoryManager
 
 load_dotenv()
 
@@ -18,16 +17,11 @@ load_dotenv()
 DB_CONFIG = {
     "host": os.getenv("DB_HOST", "localhost"),
     "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", ""),
+    "password": os.getenv("DB_PASSWORD", "1234"),
     "database": os.getenv("DB_NAME", "marketwin_db")
 }
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-
-
-@st.cache_resource
-def get_memory_manager():
-    return MarketMemoryManager()
 
 # ==========================================
 # DEMO DATA (fallback when MySQL is offline)
@@ -110,20 +104,6 @@ def insert_intel(competitor, category, intel, timestamp):
         st.session_state.demo_intel.append({"competitor": competitor, "category": category, "intel": intel, "timestamp": timestamp})
         return
     run_query("INSERT INTO competitor_intel (competitor, category, intel, timestamp) VALUES (%s, %s, %s, %s)", (competitor, category, intel, timestamp), is_select=False)
-
-def retain_hindsight_memory(competitor, category, intel, timestamp):
-    try:
-        update_text = f"{category}: {intel}"
-        return get_memory_manager().store_competitor_intel(competitor, update_text, timestamp)
-    except Exception:
-        return None
-
-def recall_hindsight_context(query):
-    try:
-        memories = get_memory_manager().recall_relevant_market_data(query)
-        return "\n".join([f"- {m.text}" for m in memories]) if memories else "No relevant Hindsight memories recalled."
-    except Exception:
-        return "No relevant Hindsight memories recalled."
 
 def authenticate(email, password):
     if st.session_state.get("demo_mode") or not st.session_state.get("db_online"):
@@ -272,37 +252,81 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"]{color:var(--text-pr
 ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.2)}
 
-/* FIXED: Sidebar collapse/expand toggle button */
-button[data-testid="baseButton-header"],
-button[data-testid="collapsedControl"] {
-    background: rgba(59,130,246,0.1) !important;
-    border: 1px solid rgba(59,130,246,0.25) !important;
+/* === SIDEBAR TOGGLE — exact testids from Streamlit 1.58 source === */
+[data-testid="stSidebarCollapseButton"] button,
+[data-testid="stExpandSidebarButton"] button {
+    background: rgba(59,130,246,0.12) !important;
+    border: 1px solid rgba(59,130,246,0.3) !important;
     border-radius: 8px !important;
-    color: #3B82F6 !important;
-    width: 36px !important;
-    height: 36px !important;
+    box-shadow: none !important;
+    transform: none !important;
+    width: 2.2rem !important;
+    height: 2.2rem !important;
     padding: 0 !important;
-    box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+[data-testid="stSidebarCollapseButton"] button:hover,
+[data-testid="stExpandSidebarButton"] button:hover {
+    background: rgba(59,130,246,0.22) !important;
     transform: none !important;
-}
-button[data-testid="baseButton-header"]:hover,
-button[data-testid="collapsedControl"]:hover {
-    background: rgba(59,130,246,0.2) !important;
-    transform: none !important;
     box-shadow: none !important;
 }
-button[data-testid="baseButton-header"] svg,
-button[data-testid="collapsedControl"] svg {
-    color: #3B82F6 !important;
-    width: 18px !important;
-    height: 18px !important;
-}
-/* Hide any text nodes that leak into the toggle button */
-button[data-testid="baseButton-header"] p,
-button[data-testid="collapsedControl"] p {
-    display: none !important;
+/* Hide the raw :material/keyboard_double_arrow_left: text node */
+[data-testid="stSidebarCollapseButton"] span,
+[data-testid="stExpandSidebarButton"] span {
     font-size: 0 !important;
-    visibility: hidden !important;
+    line-height: 0 !important;
+    color: transparent !important;
+    overflow: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    display: block !important;
+}
+/* Replace with CSS arrow using ::before on the button */
+[data-testid="stSidebarCollapseButton"] button::before {
+    content: "◀" !important;
+    font-size: 0.9rem !important;
+    color: #3B82F6 !important;
+    line-height: 1 !important;
+    font-family: sans-serif !important;
+}
+[data-testid="stExpandSidebarButton"] button::before {
+    content: "▶" !important;
+    font-size: 0.9rem !important;
+    color: #3B82F6 !important;
+    line-height: 1 !important;
+    font-family: sans-serif !important;
+}
+/* === DOWNLOAD BUTTONS — dark theme === */
+.stDownloadButton > button {
+    background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.08)) !important;
+    border: 1px solid rgba(16,185,129,0.35) !important;
+    color: #34D399 !important;
+    border-radius: 8px !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.88rem !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+    width: auto !important;
+}
+.stDownloadButton > button:hover {
+    background: linear-gradient(135deg, rgba(16,185,129,0.25), rgba(16,185,129,0.15)) !important;
+    border-color: rgba(16,185,129,0.55) !important;
+    color: #6EE7B7 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 14px rgba(16,185,129,0.15) !important;
+}
+.stDownloadButton > button p,
+.stDownloadButton > button span {
+    color: #34D399 !important;
+    font-size: 0.88rem !important;
+    line-height: normal !important;
+    width: auto !important;
+    height: auto !important;
+    display: inline !important;
 }
 
 /* ── CUSTOM COMPONENTS ── */
@@ -434,36 +458,79 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"]{color:var(--text-pr
 ::-webkit-scrollbar-track{background:rgba(0,0,0,0.03)}
 ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.12);border-radius:3px}
 
-/* FIXED: Sidebar collapse/expand toggle button - light theme */
-button[data-testid="baseButton-header"],
-button[data-testid="collapsedControl"] {
+/* === SIDEBAR TOGGLE — exact testids from Streamlit 1.58 source === */
+[data-testid="stSidebarCollapseButton"] button,
+[data-testid="stExpandSidebarButton"] button {
     background: rgba(37,99,235,0.08) !important;
-    border: 1px solid rgba(37,99,235,0.2) !important;
+    border: 1px solid rgba(37,99,235,0.25) !important;
     border-radius: 8px !important;
-    color: #2563EB !important;
-    width: 36px !important;
-    height: 36px !important;
+    box-shadow: none !important;
+    transform: none !important;
+    width: 2.2rem !important;
+    height: 2.2rem !important;
     padding: 0 !important;
-    box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+[data-testid="stSidebarCollapseButton"] button:hover,
+[data-testid="stExpandSidebarButton"] button:hover {
+    background: rgba(37,99,235,0.16) !important;
     transform: none !important;
-}
-button[data-testid="baseButton-header"]:hover,
-button[data-testid="collapsedControl"]:hover {
-    background: rgba(37,99,235,0.15) !important;
-    transform: none !important;
     box-shadow: none !important;
 }
-button[data-testid="baseButton-header"] svg,
-button[data-testid="collapsedControl"] svg {
-    color: #2563EB !important;
-    width: 18px !important;
-    height: 18px !important;
-}
-button[data-testid="baseButton-header"] p,
-button[data-testid="collapsedControl"] p {
-    display: none !important;
+[data-testid="stSidebarCollapseButton"] span,
+[data-testid="stExpandSidebarButton"] span {
     font-size: 0 !important;
-    visibility: hidden !important;
+    line-height: 0 !important;
+    color: transparent !important;
+    overflow: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+    display: block !important;
+}
+[data-testid="stSidebarCollapseButton"] button::before {
+    content: "◀" !important;
+    font-size: 0.9rem !important;
+    color: #2563EB !important;
+    line-height: 1 !important;
+    font-family: sans-serif !important;
+}
+[data-testid="stExpandSidebarButton"] button::before {
+    content: "▶" !important;
+    font-size: 0.9rem !important;
+    color: #2563EB !important;
+    line-height: 1 !important;
+    font-family: sans-serif !important;
+}
+/* === DOWNLOAD BUTTONS — light theme === */
+.stDownloadButton > button {
+    background: linear-gradient(135deg, #EFF6FF, #DBEAFE) !important;
+    border: 1px solid #BFDBFE !important;
+    color: #1D4ED8 !important;
+    border-radius: 8px !important;
+    font-family: 'Space Grotesk', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.88rem !important;
+    box-shadow: 0 1px 4px rgba(37,99,235,0.1) !important;
+    transition: all 0.2s ease !important;
+    width: auto !important;
+}
+.stDownloadButton > button:hover {
+    background: linear-gradient(135deg, #DBEAFE, #BFDBFE) !important;
+    border-color: #93C5FD !important;
+    color: #1E40AF !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.18) !important;
+}
+.stDownloadButton > button p,
+.stDownloadButton > button span {
+    color: #1D4ED8 !important;
+    font-size: 0.88rem !important;
+    line-height: normal !important;
+    width: auto !important;
+    height: auto !important;
+    display: inline !important;
 }
 
 .mw-metric-card{background:#FFF;border:1px solid rgba(0,0,0,0.07);border-radius:14px;padding:1.25rem 1.5rem;text-align:center;position:relative;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06)}
@@ -641,7 +708,7 @@ if not st.session_state.logged_in:
         if st.button("🎬  Try with Sample Data (No Login)"):
             st.session_state.logged_in = True
             st.session_state.user_email = "demo@marketwin.ai"
-            st.session_state.role = "Sales"
+            st.session_state.role = "Administrator"
             st.session_state.demo_mode = True
             st.rerun()
 
@@ -902,7 +969,6 @@ with tab1:
             if comp_name and raw_intel:
                 now_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 insert_intel(comp_name, intel_cat, raw_intel, now_time)
-                retain_hindsight_memory(comp_name, intel_cat, raw_intel, now_time)
                 log_system_activity(st.session_state.user_email, f"Added intel for '{comp_name}'")
                 show_toast(f"Intel on {comp_name} saved successfully!", "success")
                 st.rerun()
@@ -964,9 +1030,6 @@ with tab2:
             gen_btn = st.button("⚡  Generate Battlecard")
 
         if gen_btn:
-            if not GROQ_API_KEY:
-                st.error("GROQ_API_KEY is missing. Add it to your .env file and restart Streamlit.")
-                st.stop()
             log_system_activity(st.session_state.user_email, f"Generated battlecard vs '{selected_target}'")
             rows = df_intel_global[df_intel_global['competitor'] == selected_target]['intel'].tolist()
             context_str = "\n".join([f"- {r}" for r in rows])
@@ -1063,19 +1126,12 @@ with tab3:
 
     if st.button("✍️  Generate Proposal"):
         if rfp_text_block:
-            if not GROQ_API_KEY:
-                st.error("GROQ_API_KEY is missing. Add it to your .env file and restart Streamlit.")
-                st.stop()
             log_system_activity(st.session_state.user_email, "Generated B2B Proposal Document")
             all_context = "\n".join([f"- {row['competitor']} ({row['category']}): {row['intel']}" for _, row in df_intel_global.iterrows()])
-            hindsight_context = recall_hindsight_context(rfp_text_block)
             master_prompt = f"""You are a senior enterprise solutions consultant writing a {proposal_tone} proposal.
 
 Competitive landscape context:
 {all_context}
-
-Recalled Hindsight agent memory:
-{hindsight_context}
 
 Client: {client_name or 'Prospect'}
 RFP Requirements:
