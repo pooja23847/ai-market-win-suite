@@ -106,16 +106,70 @@ def insert_intel(competitor, category, intel, timestamp):
     run_query("INSERT INTO competitor_intel (competitor, category, intel, timestamp) VALUES (%s, %s, %s, %s)", (competitor, category, intel, timestamp), is_select=False)
 
 def authenticate(email, password):
+    user = DEMO_USERS.get(email)
+    if user and user["password"] == password:
+        return user["role"]
     if st.session_state.get("demo_mode") or not st.session_state.get("db_online"):
-        user = DEMO_USERS.get(email)
-        if user and user["password"] == password:
-            return user["role"]
         return None
     try:
         result = run_query("SELECT role FROM users WHERE email=%s AND password=%s", (email, password))
         return result[0][0] if result else None
     except Exception:
         return None
+
+def generate_demo_battlecard(selected_target, context_str):
+    intel_lines = context_str or "- No saved intel available yet."
+    return f"""## Executive Summary
+MarketWin AI wins against {selected_target} by turning scattered competitor observations into repeatable sales actions. The strongest position is to lead with speed, transparency, and implementation confidence.
+
+## Top Vulnerabilities To Exploit
+1. Pricing risk: position MarketWin as the clearer, lower-friction option with predictable commercial terms.
+2. Implementation risk: ask whether the prospect can afford middleware, delays, or custom integration work.
+3. Support risk: emphasize faster response paths, cleaner handoffs, and measurable customer success ownership.
+
+## Discovery Questions
+- What has slowed down your current vendor evaluation?
+- Have hidden fees or integration effort changed your expected budget?
+- Which support SLA would create confidence for your leadership team?
+
+## Objection Handling
+If the buyer says {selected_target} is already known in the market, separate brand familiarity from execution quality. Highlight that the buying decision should be based on time-to-value, support reliability, and total cost.
+
+## Proof Points From Stored Intel
+{intel_lines}
+
+## Recommended Talk Track
+The safest recommendation is to choose the platform that reduces deal risk after signature, not only the one that looks familiar during evaluation. MarketWin AI gives the team structured intelligence, faster proposal creation, and stronger competitive positioning."""
+
+def generate_demo_proposal(client_name, proposal_tone, rfp_text_block, all_context):
+    client = client_name or "Prospect"
+    context = all_context or "- No competitive context available yet."
+    return f"""## Proposal For {client}
+
+## Executive Summary
+This {proposal_tone.lower()} proposal recommends MarketWin AI as a practical sales enablement platform for teams that need faster competitive response, stronger positioning, and reusable market intelligence.
+
+## Understanding Of Requirements
+The client requirement is:
+
+{rfp_text_block}
+
+## Recommended Solution
+MarketWin AI provides a centralized competitor intelligence hub, AI-generated battlecards, proposal generation, win probability scoring, analytics, and admin audit visibility. This allows sales teams to convert raw competitor notes into usable deal strategy.
+
+## Competitive Positioning
+The proposal is grounded in the following market intelligence:
+
+{context}
+
+## Implementation Approach
+1. Start with demo mode and sample workflows.
+2. Connect a shared MySQL database for team usage.
+3. Add secure authentication and user roles.
+4. Integrate CRM and RFP document upload in the scaling phase.
+
+## Expected Outcome
+The client gets faster sales preparation, better competitor-specific messaging, and a repeatable workflow for turning field intelligence into revenue action."""
 
 # ==========================================
 # PAGE CONFIG
@@ -1053,18 +1107,21 @@ Be specific, tactical, and direct. No emojis. Write for a senior enterprise AE."
             output_placeholder = st.empty()
             full_output = ""
             try:
-                with requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, stream=True) as resp:
-                    for line in resp.iter_lines():
-                        if line:
-                            line_str = line.decode("utf-8")
-                            if line_str.startswith("data: ") and line_str != "data: [DONE]":
-                                try:
-                                    chunk = json.loads(line_str[6:])
-                                    delta = chunk["choices"][0]["delta"].get("content", "")
-                                    full_output += delta
-                                    output_placeholder.markdown(f'<div class="mw-ai-output">{full_output}▌</div>', unsafe_allow_html=True)
-                                except Exception:
-                                    pass
+                if not GROQ_API_KEY:
+                    full_output = generate_demo_battlecard(selected_target, context_str)
+                else:
+                    with requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, stream=True) as resp:
+                        for line in resp.iter_lines():
+                            if line:
+                                line_str = line.decode("utf-8")
+                                if line_str.startswith("data: ") and line_str != "data: [DONE]":
+                                    try:
+                                        chunk = json.loads(line_str[6:])
+                                        delta = chunk["choices"][0]["delta"].get("content", "")
+                                        full_output += delta
+                                        output_placeholder.markdown(f'<div class="mw-ai-output">{full_output}|</div>', unsafe_allow_html=True)
+                                    except Exception:
+                                        pass
                 output_placeholder.markdown(f'<div class="mw-ai-output">{full_output}</div>', unsafe_allow_html=True)
                 st.session_state.battlecard_output = full_output
             except Exception as e:
@@ -1154,18 +1211,21 @@ Be specific and professional. No emojis. Address requirements directly."""
             output_placeholder = st.empty()
             full_output = ""
             try:
-                with requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, stream=True) as resp:
-                    for line in resp.iter_lines():
-                        if line:
-                            line_str = line.decode("utf-8")
-                            if line_str.startswith("data: ") and line_str != "data: [DONE]":
-                                try:
-                                    chunk = json.loads(line_str[6:])
-                                    delta = chunk["choices"][0]["delta"].get("content", "")
-                                    full_output += delta
-                                    output_placeholder.markdown(f'<div class="mw-ai-output">{full_output}▌</div>', unsafe_allow_html=True)
-                                except Exception:
-                                    pass
+                if not GROQ_API_KEY:
+                    full_output = generate_demo_proposal(client_name, proposal_tone, rfp_text_block, all_context)
+                else:
+                    with requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, stream=True) as resp:
+                        for line in resp.iter_lines():
+                            if line:
+                                line_str = line.decode("utf-8")
+                                if line_str.startswith("data: ") and line_str != "data: [DONE]":
+                                    try:
+                                        chunk = json.loads(line_str[6:])
+                                        delta = chunk["choices"][0]["delta"].get("content", "")
+                                        full_output += delta
+                                        output_placeholder.markdown(f'<div class="mw-ai-output">{full_output}|</div>', unsafe_allow_html=True)
+                                    except Exception:
+                                        pass
                 output_placeholder.markdown(f'<div class="mw-ai-output">{full_output}</div>', unsafe_allow_html=True)
                 st.session_state.proposal_output = full_output
             except Exception as e:
